@@ -7,10 +7,9 @@ from core.logger import logger
 
 
 class UserDB:
-    def __init__(self, db_name="users.db"):
-        self.conn = sqlite3.connect(db_name)
+    def __init__(self):
+        self.conn = sqlite3.connect('users.db')
         self.cursor = self.conn.cursor()
-        self.db_name = db_name
 
         self.init()
 
