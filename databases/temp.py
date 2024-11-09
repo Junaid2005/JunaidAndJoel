@@ -6,108 +6,97 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from core.logger import logger
 
 
-def loadUsers():
-    cursor.execute(
-        """
-        SELECT userId from users
-    """
-    )
-    users = cursor.fetchall()
-    userIds = [user[0] for user in users]
-    return userIds
+class UserDB:
+    def __init__(self, db_name="users.db"):
+        self.conn = sqlite3.connect(db_name)
+        self.cursor = self.conn.cursor()
+        self.db_name = db_name
 
+        self.init()
 
-def initUser(id):
-    cursor.execute(
-        """
-        INSERT INTO users (userId)
-        VALUES (?)
-    """,
-        (id,),
-    )
-    conn.commit()
-    logger.info("User initialised")
+    def init(self):
+        self.cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS users (
+                userId INTEGER PRIMARY KEY,
+                admin BOOLEAN NOT NULL DEFAULT (0),
+                wins INTEGER NOT NULL DEFAULT (0)
+            );
+            """
+        )
+        self.conn.commit()
+        logger.info("DB initialised successfully")
 
+    def raw(self, query):
+        self.cursor.execute(query)
+        result = self.cursor.fetchall()
+        self.conn.commit()
+        logger.info(f"Raw SQL executed: {query}")
+        return result
 
-def isAdmin(id):
-    cursor.execute(
-        """
-        SELECT admin FROM users WHERE userId = ?
-        """,
-        (id,),
-    )
-    result = cursor.fetchone()
-    return True if result is not None and result[0] == 1 else False
+    def loadUsers(self):
+        self.cursor.execute("SELECT userId FROM users")
+        users = self.cursor.fetchall()
+        user_ids = [user[0] for user in users]
+        return user_ids
 
+    def initUser(self, user_id):
+        self.cursor.execute(
+            """
+            INSERT INTO users (userId)
+            VALUES (?)
+            """,
+            (user_id,),
+        )
+        self.conn.commit()
+        logger.info(f"User {user_id} initialized")
 
-def setAdmin(id, state):
-    cursor.execute(
-        """
-        UPDATE users
-        SET admin = ?
-        WHERE userId = ?
-        """,
-        (state, id),
-    )
-    conn.commit()
-    logger.info(f"User {id} admin status set to {state}")
+    def isAdmin(self, user_id):
+        self.cursor.execute(
+            """
+            SELECT admin FROM users WHERE userId = ?
+            """,
+            (user_id,),
+        )
+        result = self.cursor.fetchone()
+        return result is not None and result[0] == 1
 
+    def setAdmin(self, user_id, state):
+        self.cursor.execute(
+            """
+            UPDATE users
+            SET admin = ?
+            WHERE userId = ?
+            """,
+            (state, user_id),
+        )
+        self.conn.commit()
+        logger.info(f"User {user_id} admin status set to {state}")
 
-def raw(query):
-    cursor.execute(query)
-    result = cursor.fetchall()
-    conn.commit()
-    logger.info(f"Raw SQL executed: {result}")
-    return result
+    def decrementWin(self, user_id):
+        self.cursor.execute(
+            """
+            UPDATE users
+            SET wins = wins - 1
+            WHERE userId = ?
+            """,
+            (user_id,),
+        )
+        self.conn.commit()
+        logger.info(f"User {user_id} wins decremented by 1")
 
+    def incrementWin(self, user_id):
+        self.cursor.execute(
+            """
+            UPDATE users
+            SET wins = wins + 1
+            WHERE userId = ?
+            """,
+            (user_id,),
+        )
+        self.conn.commit()
+        logger.info(f"User {user_id} wins incremented by 1")
 
-def decrementWin(id):
-    cursor.execute(
-        """
-        UPDATE users
-        SET wins = wins - 1
-        WHERE userId = ?
-        """,
-        (id,),
-    )
-    conn.commit()
-    logger.info(f"User {id} wins decremented by 1")
-
-
-def incrementWin(id):
-    cursor.execute(
-        """
-        UPDATE users
-        SET wins = wins + 1
-        WHERE userId = ?
-        """,
-        (id,),
-    )
-    conn.commit()
-    logger.info(f"{id} wins incremented by 1")
-
-
-def init():
-    cursor.execute(
-        """
-        CREATE TABLE IF NOT EXISTS users (
-            userId INTEGER PRIMARY KEY,
-            admin BOOLEAN NOT NULL DEFAULT (0),
-            wins INTEGER NOT NULL DEFAULT (0) 
-        );
-    """
-    )
-    conn.commit()
-    logger.info("db initialised successfully")
-
-
-def close():
-    conn.close()
-
-
-conn = sqlite3.connect("users.db")
-cursor = conn.cursor()
-
-init()
-
-close()
+    def close(self):
+        self.conn.close()
+        logger.info("DB connection closed")
