@@ -22,7 +22,8 @@ class UserService:
                 self.session.commit()
                 logger.info(f"User {user_id} added successfully!")
             except SQLAlchemyError as e:
-                self.session.rollback()  # Rollback if there's an error
+                #this rolls back the entire session if something goes wrong (we can discuss later)
+                self.session.rollback()
                 logger.error(f"Error adding user {user_id}: {e}")
         else:
             logger.error(f"User with {user_id} already exists")
@@ -39,9 +40,8 @@ class UserService:
         user = self.get_user(user_id)
         return user is not None and user.admin
 
-
+    #close the session after you have used the service
     def close(self):
-        # Manually close the session
         if self.session:
             self.session.close()
             self.session = None
